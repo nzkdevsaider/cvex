@@ -7,6 +7,7 @@ import {
   saveResume,
   updateResumeMeta,
   type ResumeEntry,
+  type EnabledOptionalFields,
 } from "@/lib/storage";
 
 const DEBOUNCE_MS = 1500;
@@ -58,10 +59,49 @@ export function useResumeData(
     setHasUnsaved(false);
   }, [fileId]);
 
+  const updateFilename = useCallback(
+    (filename: string) => {
+      updateResumeMeta(fileId, { filename });
+      setEntry((prev) => (prev ? { ...prev, filename } : prev));
+    },
+    [fileId],
+  );
+
+  const updateTags = useCallback(
+    (tags: string[]) => {
+      updateResumeMeta(fileId, { tags });
+      setEntry((prev) => (prev ? { ...prev, tags } : prev));
+    },
+    [fileId],
+  );
+
   const updateSectionOrder = useCallback(
     (order: string[]) => {
       updateResumeMeta(fileId, { sectionOrder: order });
       setEntry((prev) => (prev ? { ...prev, sectionOrder: order } : prev));
+    },
+    [fileId],
+  );
+
+  const updateEnabledOptionalFields = useCallback(
+    (section: string, fields: string[]) => {
+      setEntry((prev) => {
+        if (!prev) return prev;
+        const next: EnabledOptionalFields = {
+          ...(prev.enabledOptionalFields ?? {}),
+          [section]: fields,
+        };
+        updateResumeMeta(fileId, { enabledOptionalFields: next });
+        return { ...prev, enabledOptionalFields: next };
+      });
+    },
+    [fileId],
+  );
+
+  const updateTemplateId = useCallback(
+    (templateId: string) => {
+      updateResumeMeta(fileId, { templateId });
+      setEntry((prev) => (prev ? { ...prev, templateId } : prev));
     },
     [fileId],
   );
@@ -75,12 +115,19 @@ export function useResumeData(
   return {
     entry,
     resume: entry?.data ?? null,
+    filename: entry?.filename ?? "",
+    tags: entry?.tags ?? [],
     sectionOrder: entry?.sectionOrder,
+    enabledOptionalFields: entry?.enabledOptionalFields,
     hydrated: true,
     isSaving,
     hasUnsaved,
     updateResume,
+    updateFilename,
+    updateTags,
     updateSectionOrder,
+    updateEnabledOptionalFields,
+    updateTemplateId,
     saveNow,
   };
 }

@@ -1,5 +1,4 @@
-import type { Resume } from "@/types/resume";
-import type { LatexTemplate, SectionKey } from "./types";
+import type { LatexTemplate } from "./types";
 
 const registry = new Map<string, LatexTemplate>();
 
@@ -19,19 +18,4 @@ export function getTemplate(id: string): LatexTemplate | undefined {
 /** Return all registered templates in registration order. */
 export function getAllTemplates(): LatexTemplate[] {
   return Array.from(registry.values());
-}
-
-/**
- * Generate LaTeX source for the given template id.
- */
-export function generateLatexForTemplate(
-  templateId: string,
-  resume: Resume,
-  sectionOrder?: SectionKey[],
-): string {
-  const template = registry.get(templateId) ?? registry.values().next().value;
-  if (!template) {
-    throw new Error("No templates registered.");
-  }
-  return template.generate(resume, sectionOrder);
 }

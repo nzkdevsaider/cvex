@@ -1,13 +1,7 @@
 import type { Resume } from "@/types/resume";
+import type { EnabledOptionalFields, ResumeEntry } from "@/types/storage";
 
-export interface ResumeEntry {
-  id: string;
-  title: string;
-  templateId: string;
-  sectionOrder?: string[];
-  updatedAt: string; // ISO string
-  data: Resume;
-}
+export type { EnabledOptionalFields, ResumeEntry } from "@/types/storage";
 
 const STORAGE_KEY = "cvbuilder_resumes";
 
@@ -21,7 +15,17 @@ function readAll(): Record<string, ResumeEntry> {
   if (!isClient()) return {};
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, ResumeEntry>) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, ResumeEntry & { title?: string }>;
+    for (const entry of Object.values(parsed)) {
+      if (!entry.filename) {
+        entry.filename = (entry as { title?: string }).title || "Mi currículo";
+      }
+      if (!entry.tags) {
+        entry.tags = [];
+      }
+    }
+    return parsed as Record<string, ResumeEntry>;
   } catch {
     return {};
   }
@@ -66,23 +70,25 @@ export function deleteResume(id: string): void {
 /** Creates a new resume from the selected template and returns the new ID. */
 export function createResume(templateId: string): string {
   const id = crypto.randomUUID();
+  const store = readAll();
+  const count = Object.keys(store).length;
   const entry: ResumeEntry = {
     id,
-    title: "Mi CV",
+    filename: `Mi currículo #${count + 1}`,
+    tags: [],
     templateId,
     updatedAt: new Date().toISOString(),
     data: buildBaseResume(),
   };
-  const store = readAll();
   store[id] = entry;
   writeAll(store);
   return id;
 }
 
-/** Updates metadata */
+/** Updates metadata (filename, tags, sectionOrder, enabledOptionalFields, templateId). Does not change data. */
 export function updateResumeMeta(
   id: string,
-  meta: Partial<Pick<ResumeEntry, "title" | "sectionOrder">>,
+  meta: Partial<Pick<ResumeEntry, "filename" | "tags" | "sectionOrder" | "enabledOptionalFields" | "templateId">>,
 ): void {
   const store = readAll();
   if (!store[id]) return;

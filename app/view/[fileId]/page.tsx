@@ -37,7 +37,7 @@ export default function ViewPage() {
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${entry?.data.basics.name || "cv"}.pdf`;
+    a.download = `${entry?.filename || "cv"}.pdf`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
@@ -50,7 +50,7 @@ export default function ViewPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${entry?.data.basics.name || "cv"}.json`;
+    a.download = `${entry?.filename || "cv"}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
@@ -74,7 +74,7 @@ export default function ViewPage() {
             </Button>
           </Link>
           <span className="text-sm font-medium opacity-80">
-            {entry?.data.basics.name || "Sin nombre"}
+            {entry?.filename || "Sin nombre"}
           </span>
         </div>
 

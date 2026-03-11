@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function Navbar() {
@@ -7,19 +8,32 @@ export function Navbar() {
         {/* Logo */}
         <Link
           href="/files"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight hover:opacity-80 transition-all duration-200 hover:scale-[1.04]"
         >
-          <span className="badge badge-neutral font-bold px-2 py-3 text-sm">
-            CVeX
-          </span>
+          <Image
+            src="/logo.png"
+            alt="CVeX logo"
+            width={42}
+            height={42}
+            className="rounded-sm"
+          />
         </Link>
       </div>
 
       <div className="navbar-end">
         {/* Nav links */}
         <nav className="flex items-center gap-4 text-sm">
-          <Link href="/files" className="link link-hover opacity-70">
+          <Link
+            href="/files"
+            className="link link-hover opacity-70 hover:opacity-100 transition-opacity duration-200"
+          >
             Mis CVs
+          </Link>
+          <Link
+            href="/settings"
+            className="link link-hover opacity-70 hover:opacity-100 transition-opacity duration-200"
+          >
+            Ajustes
           </Link>
         </nav>
       </div>

@@ -2,6 +2,7 @@
 
 import {
   useFieldArray,
+  Controller,
   type Control,
   type UseFormRegister,
   type FieldErrors,
@@ -14,10 +15,12 @@ interface WorkFormProps {
   control: Control<ResumeSchemaType>;
   register: UseFormRegister<ResumeSchemaType>;
   errors: FieldErrors<ResumeSchemaType>;
+  enabledFields?: string[];
 }
 
-export function WorkForm({ control, register, errors }: WorkFormProps) {
+export function WorkForm({ control, register, errors, enabledFields = [] }: WorkFormProps) {
   const { fields, append, remove } = useFieldArray({ control, name: "work" });
+  const showHighlights = enabledFields.includes("highlights");
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,6 +88,31 @@ export function WorkForm({ control, register, errors }: WorkFormProps) {
               error={e?.summary}
               {...register(`work.${index}.summary`)}
             />
+
+            {showHighlights && (
+              <Controller
+                control={control}
+                name={`work.${index}.highlights`}
+                render={({ field: f }) => (
+                  <FormField
+                    label="Logros / Hitos destacados"
+                    textarea
+                    rows={3}
+                    placeholder={"Aumenté las ventas en un 20%\nAutomaticé el proceso de despliegue\nLideré un equipo de 5 personas"}
+                    hint="Un logro por línea"
+                    value={(f.value ?? []).join("\n")}
+                    onChange={(e) =>
+                      f.onChange(
+                        (e.target as HTMLTextAreaElement).value
+                          .split("\n")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
         );
       })}

@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import {
   useFieldArray,
+  Controller,
   type Control,
   type UseFormRegister,
   type FieldErrors,
@@ -14,17 +15,20 @@ interface VolunteerFormProps {
   control: Control<ResumeSchemaType>;
   register: UseFormRegister<ResumeSchemaType>;
   errors: FieldErrors<ResumeSchemaType>;
+  enabledFields?: string[];
 }
 
 export function VolunteerForm({
   control,
   register,
   errors,
+  enabledFields = [],
 }: VolunteerFormProps) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "volunteer",
   });
+  const showHighlights = enabledFields.includes("highlights");
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,6 +94,31 @@ export function VolunteerForm({
               error={e?.summary}
               {...register(`volunteer.${index}.summary`)}
             />
+
+            {showHighlights && (
+              <Controller
+                control={control}
+                name={`volunteer.${index}.highlights`}
+                render={({ field: f }) => (
+                  <FormField
+                    label="Contribuciones destacadas"
+                    textarea
+                    rows={3}
+                    placeholder={"Organicé eventos para 200 personas\nRecaudé fondos por valor de 5.000€"}
+                    hint="Una contribución por línea"
+                    value={(f.value ?? []).join("\n")}
+                    onChange={(e) =>
+                      f.onChange(
+                        (e.target as HTMLTextAreaElement).value
+                          .split("\n")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
         );
       })}

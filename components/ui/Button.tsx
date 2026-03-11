@@ -43,6 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           "btn",
           variantClasses[variant],
           sizeClasses[size],
+          "transition-all duration-150 active:scale-[0.97]",
           className,
         ].join(" ")}
         {...props}

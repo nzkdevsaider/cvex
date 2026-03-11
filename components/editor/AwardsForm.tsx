@@ -40,7 +40,7 @@ export function AwardsForm({ control, register, errors }: AwardsFormProps) {
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 label="Título *"
-                placeholder="Premio Nacional de Innovación"
+                placeholder="Ej: Premio Nacional de Innovación"
                 error={e?.title}
                 {...register(`awards.${index}.title`)}
               />
@@ -54,7 +54,7 @@ export function AwardsForm({ control, register, errors }: AwardsFormProps) {
 
             <FormField
               label="Entidad que lo otorga"
-              placeholder="Ministerio de Ciencia"
+              placeholder="Ej: Institución, organización, empresa..."
               error={e?.awarder}
               {...register(`awards.${index}.awarder`)}
             />
@@ -63,7 +63,7 @@ export function AwardsForm({ control, register, errors }: AwardsFormProps) {
               label="Descripción"
               textarea
               rows={2}
-              placeholder="Reconocimiento por..."
+              placeholder="Ej: Reconocimiento por..."
               error={e?.summary}
               {...register(`awards.${index}.summary`)}
             />

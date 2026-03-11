@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Resume } from "@/types/resume";
-import { generateLatexForTemplate } from "@/lib/latex/templates";
+import { generateLatexForAnyTemplate } from "@/lib/template-collections";
 import type { SectionKey } from "@/lib/latex/types";
 
 interface PdfTeXCompileResult {
@@ -30,8 +30,52 @@ declare global {
 }
 
 const COMPILE_DEBOUNCE_MS = 300;
+const IDB_DB_NAME = "cvex";
+const IDB_DB_VERSION = 1;
+const IDB_STORE = "pdf_cache";
 
-export function useLatexWorker() {
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_DB_NAME, IDB_DB_VERSION);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+        req.result.createObjectStore(IDB_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(key: string): Promise<Blob | null> {
+  try {
+    const db = await openDB();
+    return await new Promise<Blob | null>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => { db.close(); resolve((req.result as Blob) ?? null); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function idbSet(key: string, blob: Blob): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(blob, key);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch {
+    // Silently ignore storage errors
+  }
+}
+
+export function useLatexWorker(cacheKey?: string) {
   const engineRef = useRef<PdfTeXEngineInstance | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,6 +84,27 @@ export function useLatexWorker() {
   const [isCompiling, setIsCompiling] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * undefined = lookup en curso (solo cuando se proporciona cacheKey)
+   * null      = lookup terminado, sin PDF en caché
+   * Blob      = PDF restaurado del caché
+   */
+  const [cachedPdf, setCachedPdf] = useState<Blob | null | undefined>(
+    cacheKey ? undefined : null,
+  );
+
+  // Carga el PDF en caché desde IndexedDB al montar
+  useEffect(() => {
+    if (!cacheKey) return;
+    idbGet(cacheKey).then((blob) => {
+      setCachedPdf(blob);
+      if (blob) {
+        setPdfBlob(blob);
+        setPdfUrl(URL.createObjectURL(blob));
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -100,7 +165,7 @@ export function useLatexWorker() {
         const engine = engineRef.current;
         if (!engine?.isReady()) return;
 
-        const latex = generateLatexForTemplate(
+        const latex = generateLatexForAnyTemplate(
           templateId,
           resume,
           sectionOrder as SectionKey[] | undefined,
@@ -129,6 +194,7 @@ export function useLatexWorker() {
             ],
             { type: "application/pdf" },
           );
+          if (cacheKey) idbSet(cacheKey, blob);
           setPdfUrl((prev) => {
             if (prev) URL.revokeObjectURL(prev);
             return URL.createObjectURL(blob);
@@ -147,5 +213,5 @@ export function useLatexWorker() {
     [],
   );
 
-  return { pdfUrl, pdfBlob, isCompiling, isInitializing, error, compile };
+  return { pdfUrl, pdfBlob, isCompiling, isInitializing, error, compile, cachedPdf };
 }

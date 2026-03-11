@@ -1,9 +1,13 @@
-import "./templates/default";
-import "./templates/harvard";
+import { registerTemplate } from "./registry";
+import defaultTemplate from "./builtin/default.json";
+import northeasternTemplate from "./builtin/northeastern.json";
+
+// Register all built-in templates
+registerTemplate(defaultTemplate);
+registerTemplate(northeasternTemplate);
 
 // Public API
 export {
-  generateLatexForTemplate,
   getAllTemplates,
   getTemplate,
   registerTemplate,

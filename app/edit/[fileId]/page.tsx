@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,7 +34,13 @@ import { ProjectsForm } from "@/components/editor/ProjectsForm";
 import { InterestsForm } from "@/components/editor/InterestsForm";
 import { ReferencesForm } from "@/components/editor/ReferencesForm";
 import { PublicationsForm } from "@/components/editor/PublicationsForm";
+import { OptionalFieldsModal } from "@/components/ui/OptionalFieldsModal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ChangeTemplateModal } from "@/components/resume/ChangeTemplateModal";
 import { Button } from "@/components/ui/Button";
+import { resolveTemplateFieldUsage, resolveTemplateName } from "@/lib/template-collections";
+import type { SectionKey } from "@/lib/latex/types";
+import { Layers, Plus, X } from "lucide-react";
 import Link from "next/link";
 import type { Resume } from "@/types/resume";
 
@@ -169,11 +175,18 @@ export default function EditPage() {
   const {
     entry,
     resume,
+    filename,
+    tags,
     hydrated,
     isSaving,
     hasUnsaved,
     updateResume,
+    updateFilename,
+    updateTags,
     updateSectionOrder,
+    updateEnabledOptionalFields,
+    updateTemplateId,
+    enabledOptionalFields,
     saveNow,
   } = useResumeData(fileId, { autoSave });
   const {
@@ -182,7 +195,8 @@ export default function EditPage() {
     isInitializing,
     error: latexError,
     compile,
-  } = useLatexWorker();
+    cachedPdf,
+  } = useLatexWorker(fileId);
 
   const [viewMode, setViewMode] = useState<ViewMode>("form");
   const [jsonText, setJsonText] = useState("");
@@ -190,6 +204,78 @@ export default function EditPage() {
 
   const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_ORDER);
   const sectionOrderRef = useRef<string[]>(DEFAULT_ORDER);
+
+  const [editingFilename, setEditingFilename] = useState(false);
+  const [filenameValue, setFilenameValue] = useState("");
+  const filenameInputRef = useRef<HTMLInputElement>(null);
+
+  function commitFilename() {
+    const trimmed = filenameValue.trim() || filename;
+    setFilenameValue(trimmed);
+    setEditingFilename(false);
+    if (trimmed !== filename) updateFilename(trimmed);
+  }
+
+  function startEditingFilename() {
+    setFilenameValue(filename);
+    setEditingFilename(true);
+    setTimeout(() => filenameInputRef.current?.select(), 0);
+  }
+
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const tagInputRef = useRef<HTMLInputElement>(null);
+
+  function commitTag() {
+    const trimmed = tagInput.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      updateTags([...tags, trimmed]);
+    }
+    setTagInput("");
+    setAddingTag(false);
+  }
+
+  function removeTag(tag: string) {
+    updateTags(tags.filter((t) => t !== tag));
+  }
+
+  function startAddingTag() {
+    setAddingTag(true);
+    setTimeout(() => tagInputRef.current?.focus(), 0);
+  }
+
+  /** Section key for which the optional-fields modal is open, or null. */
+  const [openModalForSection, setOpenModalForSection] = useState<string | null>(
+    null,
+  );
+
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
+
+  function handleTemplateSelect(templateId: string) {
+    setShowTemplateModal(false);
+    setPendingTemplateId(templateId);
+  }
+
+  function confirmTemplateChange() {
+    if (!pendingTemplateId) return;
+    updateTemplateId(pendingTemplateId);
+    compile(
+      form.getValues() as Resume,
+      pendingTemplateId,
+      sectionOrderRef.current,
+    );
+    setPendingTemplateId(null);
+  }
+
+  /** Field usage derived from the active template — which optional fields it supports. */
+  const fieldUsage = useMemo(
+    () =>
+      entry?.templateId
+        ? resolveTemplateFieldUsage(entry.templateId)
+        : { basicsOptional: [], sectionsAdditional: {}, templateSections: null },
+    [entry?.templateId],
+  );
 
   function setOrder(next: string[]) {
     sectionOrderRef.current = next;
@@ -269,11 +355,14 @@ export default function EditPage() {
   }, [form, hydrated, updateResume, viewMode]);
 
   useEffect(() => {
-    if (!isInitializing && hydrated && resume) {
+    // cachedPdf === undefined → lookup en curso, esperar
+    // cachedPdf === null     → sin caché, compilar normalmente
+    // cachedPdf instanceof Blob → PDF restaurado, no compilar
+    if (!isInitializing && hydrated && resume && cachedPdf === null) {
       compile(resume, entry?.templateId, sectionOrderRef.current);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitializing]);
+  }, [isInitializing, cachedPdf]);
 
   // Mode switching helpers
 
@@ -284,26 +373,20 @@ export default function EditPage() {
   }
 
   function applyJson(opts: { thenSwitchToForm?: boolean } = {}) {
+    let parsed: Resume;
     try {
-      const parsed = JSON.parse(jsonText) as Resume;
-      const result = ResumeSchema.safeParse(parsed);
-      if (!result.success) {
-        const first = result.error.issues[0];
-        setJsonError(`${first.path.join(".")} — ${first.message}`);
-        return;
-      }
-      setJsonError(null);
-      form.reset(result.data as ResumeSchemaType);
-      updateResume(result.data as Resume);
-      compile(
-        result.data as Resume,
-        entry?.templateId,
-        sectionOrderRef.current,
-      );
-      if (opts.thenSwitchToForm) setViewMode("form");
+      parsed = JSON.parse(jsonText) as Resume;
     } catch {
       setJsonError("JSON inválido: comprueba la sintaxis.");
+      return;
     }
+    // Zod validation errors (missing/invalid fields) are only surfaced in form
+    // mode — here we just require syntactically valid JSON.
+    setJsonError(null);
+    form.reset(parsed as ResumeSchemaType);
+    updateResume(parsed);
+    compile(parsed, entry?.templateId, sectionOrderRef.current);
+    if (opts.thenSwitchToForm) setViewMode("form");
   }
 
   function switchToForm() {
@@ -319,11 +402,19 @@ export default function EditPage() {
     updateSectionOrder(next);
   }
 
+  function removeSection(key: string) {
+    const next = sectionOrderRef.current.filter((k) => k !== key);
+    setOrder(next);
+    updateSectionOrder(next);
+  }
+
   function renderSectionContent(key: string) {
+    const enabledFields = enabledOptionalFields?.[key] ?? [];
     const p = {
       control: form.control,
       register: form.register,
       errors: form.formState.errors,
+      enabledFields,
     };
     switch (key) {
       case "work":
@@ -361,8 +452,11 @@ export default function EditPage() {
     );
   }
 
+  const { templateSections } = fieldUsage;
   const hiddenOptionalKeys = OPTIONAL_KEYS.filter(
-    (k) => !sectionOrder.includes(k),
+    (k) =>
+      !sectionOrder.includes(k) &&
+      (templateSections === null || templateSections.includes(k as SectionKey)),
   );
 
   return (
@@ -370,90 +464,164 @@ export default function EditPage() {
       {/* Left panel  */}
       <div className="flex w-1/2 flex-col overflow-y-auto border-r border-base-300">
         {/* Toolbar */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-base-300 bg-base-200/90 px-5 py-3 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <Link href="/files">
-              <Button variant="ghost" size="sm">
-                ← Mis CVs
-              </Button>
-            </Link>
-            <span className="text-xs opacity-40">/</span>
-            <span className="text-xs opacity-70">
-              {entry?.data.basics.name || "Sin nombre"}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Status indicators */}
-            {autoSave && isSaving && (
-              <span className="text-xs opacity-50">Guardando…</span>
-            )}
-
-            {/* View mode toggle */}
-
-            <div role="tablist" className="tabs tabs-boxed tabs-sm">
-              <button
-                type="button"
-                role="tab"
-                onClick={() =>
-                  viewMode === "json" ? switchToForm() : undefined
-                }
-                className={[
-                  "tab",
-                  viewMode === "form" ? "tab-active" : "",
-                ].join(" ")}
-              >
-                Formulario
-              </button>
-              <button
-                type="button"
-                role="tab"
-                onClick={() =>
-                  viewMode === "form" ? switchToJson() : undefined
-                }
-                className={[
-                  "tab",
-                  viewMode === "json" ? "tab-active" : "",
-                ].join(" ")}
-              >
-                JSON
-              </button>
+        <div className="sticky top-0 z-10 border-b border-base-300 bg-base-200/90 backdrop-blur-sm">
+          {/* Row 1: nav + controls */}
+          <div className="flex items-center justify-between px-5 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <Link href="/files">
+                <Button variant="ghost" size="sm">
+                  ← Mis CVs
+                </Button>
+              </Link>
+              <span className="text-xs opacity-40">/</span>
+              {editingFilename ? (
+                <input
+                  ref={filenameInputRef}
+                  value={filenameValue}
+                  onChange={(e) => setFilenameValue(e.target.value)}
+                  onBlur={commitFilename}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitFilename();
+                    if (e.key === "Escape") {
+                      setFilenameValue(filename);
+                      setEditingFilename(false);
+                    }
+                  }}
+                  className="input input-xs w-44"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEditingFilename}
+                  className="text-xs opacity-70 hover:opacity-100 transition-opacity truncate max-w-48"
+                  title="Haz clic para editar el nombre"
+                >
+                  {filename || "Sin nombre"}
+                </button>
+              )}
             </div>
 
-            <div className="divider divider-horizontal" />
+            <div className="flex items-center gap-3">
+              {/* Status indicators */}
+              {autoSave && isSaving && (
+                <span className="text-xs opacity-50">Guardando…</span>
+              )}
 
-            {/* Autosave toggle */}
-            <label
-              className="flex items-center gap-1.5 cursor-pointer text-xs"
-              title={
-                autoSave ? "Autoguardado activado" : "Autoguardado desactivado"
-              }
-            >
-              <input
-                type="checkbox"
-                className="toggle toggle-sm toggle-primary"
-                checked={autoSave}
-                onChange={toggleAutoSave}
-              />
-              <span className={autoSave ? "opacity-60" : "opacity-30"}>
-                Auto
-              </span>
-            </label>
+              {/* View mode toggle */}
 
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={!hasUnsaved || isSaving || autoSave}
-              onClick={handleSave}
-            >
-              {hasUnsaved ? "● Guardar" : "Guardado"}
-            </Button>
+              <div role="tablist" className="tabs tabs-boxed tabs-sm">
+                <button
+                  type="button"
+                  role="tab"
+                  onClick={() =>
+                    viewMode === "json" ? switchToForm() : undefined
+                  }
+                  className={[
+                    "tab",
+                    viewMode === "form" ? "tab-active" : "",
+                  ].join(" ")}
+                >
+                  Formulario
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  onClick={() =>
+                    viewMode === "form" ? switchToJson() : undefined
+                  }
+                  className={[
+                    "tab",
+                    viewMode === "json" ? "tab-active" : "",
+                  ].join(" ")}
+                >
+                  JSON
+                </button>
+              </div>
 
-            {/* <Link href={`/view/${fileId}`}>
-              <Button variant="secondary" size="sm">
-                Ver PDF
+              <div className="divider divider-horizontal" />
+
+              {/* Autosave toggle */}
+              <label
+                className="flex items-center gap-1.5 cursor-pointer text-xs"
+                title={
+                  autoSave ? "Autoguardado activado" : "Autoguardado desactivado"
+                }
+              >
+                <input
+                  type="checkbox"
+                  className="toggle toggle-sm toggle-primary"
+                  checked={autoSave}
+                  onChange={toggleAutoSave}
+                />
+                <span className={autoSave ? "opacity-60" : "opacity-30"}>
+                  Auto
+                </span>
+              </label>
+
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!hasUnsaved || isSaving || autoSave}
+                onClick={handleSave}
+              >
+                {hasUnsaved ? "● Guardar" : "Guardado"}
               </Button>
-            </Link> */}
+            </div>
+          </div>
+
+          {/* Row 2: template badge + tags */}
+          <div className="flex flex-wrap items-center gap-1.5 px-5 pb-2">
+            <button
+              type="button"
+              onClick={() => setShowTemplateModal(true)}
+              className="badge badge-primary badge-outline badge-sm gap-1 cursor-pointer hover:badge-primary transition-colors"
+              title="Cambiar plantilla"
+            >
+              <Layers size={10} />
+              {resolveTemplateName(entry?.templateId ?? "")}
+            </button>
+            <span className="text-base-content/20 text-xs select-none">·</span>
+            {tags.map((tag) => (
+              <span key={tag} className="badge badge-outline badge-sm gap-1">
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="opacity-50 hover:opacity-100 transition-opacity"
+                  aria-label={`Quitar etiqueta ${tag}`}
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            {addingTag ? (
+              <input
+                ref={tagInputRef}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onBlur={commitTag}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitTag();
+                  if (e.key === "Escape") {
+                    setTagInput("");
+                    setAddingTag(false);
+                  }
+                }}
+                placeholder="Nueva etiqueta…"
+                className="input input-xs w-28"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={startAddingTag}
+                className="badge badge-ghost badge-sm gap-0.5 opacity-40 hover:opacity-70 transition-opacity"
+                title="Añadir etiqueta"
+              >
+                <Plus size={10} />
+                Etiqueta
+              </button>
+            )}
           </div>
         </div>
 
@@ -467,10 +635,15 @@ export default function EditPage() {
             <SectionPanel
               title="Datos básicos"
               description="Información personal y de contacto"
+              canDelete={false}
+              hasOptionalFields={fieldUsage.basicsOptional.length > 0}
+              onAddOptionalFields={() => setOpenModalForSection("basics")}
             >
               <BasicsForm
                 register={form.register}
+                control={form.control}
                 errors={form.formState.errors}
+                enabledFields={enabledOptionalFields?.basics ?? []}
               />
             </SectionPanel>
 
@@ -494,6 +667,17 @@ export default function EditPage() {
                         id={key}
                         title={cfg.label}
                         description={cfg.description}
+                        canDelete={true}
+                        onDelete={() => removeSection(key)}
+                        hasOptionalFields={
+                          (
+                            fieldUsage.sectionsAdditional[key as SectionKey] ??
+                            []
+                          ).length > 0
+                        }
+                        onAddOptionalFields={() =>
+                          setOpenModalForSection(key)
+                        }
                       >
                         {renderSectionContent(key)}
                       </SortableSectionPanel>
@@ -528,6 +712,52 @@ export default function EditPage() {
               </div>
             )}
           </form>
+        )}
+
+        {/* Change template modal */}
+        <ChangeTemplateModal
+          open={showTemplateModal}
+          currentTemplateId={entry?.templateId ?? ""}
+          onSelect={handleTemplateSelect}
+          onClose={() => setShowTemplateModal(false)}
+        />
+
+        {/* Confirm template change dialog */}
+        <ConfirmDialog
+          open={pendingTemplateId !== null}
+          title="¿Cambiar la plantilla?"
+          description="Se regenerará el PDF con la nueva plantilla. Los datos del CV se conservan."
+          confirmLabel="Cambiar plantilla"
+          cancelLabel="Cancelar"
+          onConfirm={confirmTemplateChange}
+          onCancel={() => setPendingTemplateId(null)}
+        />
+
+        {/* Optional fields modal */}
+        {openModalForSection && (
+          <OptionalFieldsModal
+            open={true}
+            sectionTitle={
+              openModalForSection === "basics"
+                ? "Datos básicos"
+                : (SECTION_CONFIG[openModalForSection]?.label ??
+                  openModalForSection)
+            }
+            availableFields={
+              openModalForSection === "basics"
+                ? fieldUsage.basicsOptional
+                : (fieldUsage.sectionsAdditional[
+                    openModalForSection as SectionKey
+                  ] ?? [])
+            }
+            enabledFields={
+              enabledOptionalFields?.[openModalForSection] ?? []
+            }
+            onSave={(enabled) =>
+              updateEnabledOptionalFields(openModalForSection, enabled)
+            }
+            onClose={() => setOpenModalForSection(null)}
+          />
         )}
 
         {/* JSON view */}
@@ -572,7 +802,7 @@ export default function EditPage() {
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-base-300/80 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3 text-center px-6">
               <span className="loading loading-spinner loading-lg" />
-              <p className="text-sm font-medium">Cargando motor LaTeX…</p>
+              <p className="text-sm font-medium">Cargando motor ...</p>
               <p className="text-xs opacity-50 max-w-xs">
                 La primera vez descarga los paquetes TeX desde la red
                 <br />
@@ -587,7 +817,7 @@ export default function EditPage() {
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-base-300/70 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-3">
               <span className="loading loading-spinner loading-lg" />
-              <span className="text-xs opacity-60">Compilando LaTeX…</span>
+              <span className="text-xs opacity-60">Compilando, por favor espera ...</span>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import {
   useFieldArray,
+  Controller,
   type Control,
   type UseFormRegister,
   type FieldErrors,
@@ -14,13 +15,15 @@ interface ProjectsFormProps {
   control: Control<ResumeSchemaType>;
   register: UseFormRegister<ResumeSchemaType>;
   errors: FieldErrors<ResumeSchemaType>;
+  enabledFields?: string[];
 }
 
-export function ProjectsForm({ control, register, errors }: ProjectsFormProps) {
+export function ProjectsForm({ control, register, errors, enabledFields = [] }: ProjectsFormProps) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "projects",
   });
+  const showHighlights = enabledFields.includes("highlights");
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,6 +82,31 @@ export function ProjectsForm({ control, register, errors }: ProjectsFormProps) {
               error={e?.description}
               {...register(`projects.${index}.description`)}
             />
+
+            {showHighlights && (
+              <Controller
+                control={control}
+                name={`projects.${index}.highlights`}
+                render={({ field: f }) => (
+                  <FormField
+                    label="Hitos del proyecto"
+                    textarea
+                    rows={3}
+                    placeholder={"Implementado por 10.000 usuarios\nReduje el tiempo de carga en un 40%"}
+                    hint="Un hito por línea"
+                    value={(f.value ?? []).join("\n")}
+                    onChange={(e) =>
+                      f.onChange(
+                        (e.target as HTMLTextAreaElement).value
+                          .split("\n")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
         );
       })}

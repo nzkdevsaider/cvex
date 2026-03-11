@@ -13,8 +13,8 @@ export function Card({
   return (
     <div
       className={[
-        "card bg-base-200 shadow-sm border border-base-300 p-5",
-        hover ? "cursor-pointer transition-colors hover:bg-base-300" : "",
+        "card bg-base-200 shadow-sm border border-base-300 p-5 transition-all duration-200",
+        hover ? "cursor-pointer hover:bg-base-300 hover:-translate-y-0.5 hover:shadow-lg" : "",
         className,
       ].join(" ")}
       {...props}

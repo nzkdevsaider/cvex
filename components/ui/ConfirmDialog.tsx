@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 
 interface ConfirmDialogProps {
@@ -41,7 +42,7 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="modal modal-open z-50"
       role="dialog"
@@ -49,12 +50,8 @@ export function ConfirmDialog({
       aria-labelledby="confirm-dialog-title"
     >
       {/* Panel */}
-      <div className="modal-box max-w-sm" onClick={(e) => e.stopPropagation()}>
-        {/* Icon */}
-        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-error/10">
-          <span className="text-xl">🗑️</span>
-        </div>
-
+      <div className="modal-box max-w-sm animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        
         {/* Text */}
         <h2 id="confirm-dialog-title" className="text-base font-semibold">
           {title}
@@ -83,7 +80,8 @@ export function ConfirmDialog({
         </div>
       </div>
       {/* Backdrop */}
-      <div className="modal-backdrop" onClick={onCancel} />
-    </div>
+      <div className="modal-backdrop animate-fade-in" onClick={onCancel} />
+    </div>,
+    document.body,
   );
 }

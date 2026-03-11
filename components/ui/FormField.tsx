@@ -21,9 +21,9 @@ type TextareaProps = BaseProps &
 type FormFieldProps = InputProps | TextareaProps;
 
 const inputBaseClass =
-  "input input-bordered w-full text-sm disabled:opacity-40";
+  "input input-bordered w-full text-sm disabled:opacity-40 transition-shadow duration-200";
 const textareaBaseClass =
-  "textarea textarea-bordered w-full text-sm disabled:opacity-40 resize-none";
+  "textarea textarea-bordered w-full text-sm disabled:opacity-40 resize-none transition-shadow duration-200";
 
 export function FormField(props: FormFieldProps) {
   const { label, error, hint, textarea, rows, ...rest } =

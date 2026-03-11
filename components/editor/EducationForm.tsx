@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import {
   useFieldArray,
+  Controller,
   type Control,
   type UseFormRegister,
   type FieldErrors,
@@ -14,17 +15,20 @@ interface EducationFormProps {
   control: Control<ResumeSchemaType>;
   register: UseFormRegister<ResumeSchemaType>;
   errors: FieldErrors<ResumeSchemaType>;
+  enabledFields?: string[];
 }
 
 export function EducationForm({
   control,
   register,
   errors,
+  enabledFields = [],
 }: EducationFormProps) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: "education",
   });
+  const showCourses = enabledFields.includes("courses");
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,6 +102,31 @@ export function EducationForm({
               error={e?.url}
               {...register(`education.${index}.url`)}
             />
+
+            {showCourses && (
+              <Controller
+                control={control}
+                name={`education.${index}.courses`}
+                render={({ field: f }) => (
+                  <FormField
+                    label="Cursos"
+                    textarea
+                    rows={3}
+                    placeholder={"Algoritmos y estructuras de datos\nArquitectura de software\nAprendizaje automático"}
+                    hint="Un curso por línea"
+                    value={(f.value ?? []).join("\n")}
+                    onChange={(e) =>
+                      f.onChange(
+                        (e.target as HTMLTextAreaElement).value
+                          .split("\n")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                )}
+              />
+            )}
           </div>
         );
       })}

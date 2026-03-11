@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MoreVertical } from "lucide-react";
 
 interface SectionPanelProps {
   title: string;
@@ -11,6 +12,12 @@ interface SectionPanelProps {
   dragListeners?: Record<string, unknown>;
   /** Spread onto the drag-handle element for accessibility attributes */
   dragAttributes?: Record<string, unknown>;
+  /** Whether the section can be deleted. Pass false to show the option disabled (e.g. basics). */
+  canDelete?: boolean;
+  onDelete?: () => void;
+  /** Whether the template supports additional optional fields for this section. */
+  hasOptionalFields?: boolean;
+  onAddOptionalFields?: () => void;
 }
 
 export function SectionPanel({
@@ -20,6 +27,10 @@ export function SectionPanel({
   children,
   dragListeners,
   dragAttributes,
+  canDelete,
+  onDelete,
+  hasOptionalFields,
+  onAddOptionalFields,
 }: SectionPanelProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -35,7 +46,7 @@ export function SectionPanel({
         {dragListeners && (
           <button
             type="button"
-            className="cursor-grab touch-none shrink-0 opacity-40 hover:opacity-80 focus:outline-none"
+            className="cursor-grab touch-none shrink-0 opacity-40 hover:opacity-80 focus:outline-none transition-all duration-150 hover:scale-110"
             {...dragListeners}
             {...dragAttributes}
             aria-label="Reordenar sección"
@@ -69,6 +80,59 @@ export function SectionPanel({
             <p className="mt-0.5 text-xs opacity-60">{description}</p>
           )}
         </div>
+
+        {/* Section options menu (3-dots) */}
+        {canDelete !== undefined && (
+          <div
+            className="dropdown dropdown-end shrink-0 mr-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              tabIndex={0}
+              role="button"
+              className="btn btn-ghost btn-xs"
+              aria-label="Opciones de sección"
+            >
+              <MoreVertical size={14} />
+              Más opciones
+            </button>
+            <ul
+              tabIndex={0}
+              className="dropdown-content menu bg-base-100 rounded-box z-50 w-52 p-1 shadow-lg border border-base-300 text-sm"
+            >
+              <li>
+                <button
+                  type="button"
+                  className={
+                    !hasOptionalFields ? "opacity-40 cursor-not-allowed" : ""
+                  }
+                  disabled={!hasOptionalFields}
+                  onClick={hasOptionalFields ? onAddOptionalFields : undefined}
+                >
+                  Añadir campo adicional
+                </button>
+              </li>
+              <li>
+                <hr className="my-0.5 border-base-300" />
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className={
+                    !canDelete
+                      ? "opacity-40 cursor-not-allowed"
+                      : "text-error hover:bg-error/10"
+                  }
+                  disabled={!canDelete}
+                  onClick={canDelete ? onDelete : undefined}
+                >
+                  Eliminar sección
+                </button>
+              </li>
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Body */}

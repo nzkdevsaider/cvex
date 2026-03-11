@@ -10,6 +10,10 @@ interface SortableSectionPanelProps {
   description?: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
+  canDelete?: boolean;
+  onDelete?: () => void;
+  hasOptionalFields?: boolean;
+  onAddOptionalFields?: () => void;
 }
 
 export function SortableSectionPanel({
@@ -18,6 +22,10 @@ export function SortableSectionPanel({
   description,
   defaultOpen = true,
   children,
+  canDelete,
+  onDelete,
+  hasOptionalFields,
+  onAddOptionalFields,
 }: SortableSectionPanelProps) {
   const {
     attributes,
@@ -44,6 +52,10 @@ export function SortableSectionPanel({
         defaultOpen={defaultOpen}
         dragListeners={listeners as Record<string, unknown> | undefined}
         dragAttributes={attributes as unknown as Record<string, unknown>}
+        canDelete={canDelete}
+        onDelete={onDelete}
+        hasOptionalFields={hasOptionalFields}
+        onAddOptionalFields={onAddOptionalFields}
       >
         {children}
       </SectionPanel>
