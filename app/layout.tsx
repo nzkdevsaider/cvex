@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CVeX - Gestionador de Curriculums Vitae",
+  title: "CVeX - Creador de CV's",
   description:
-    "Crea, gestiona y exporta tu curriculum vitae sin perder el estilo.",
+    "Crea y organiza fácilmente tus curriculums sin complicaciones.",
 };
 
 export default function RootLayout({
