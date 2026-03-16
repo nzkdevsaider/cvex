@@ -133,6 +133,13 @@ export default function AddTemplatesCollectionsPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h2 className="text-lg font-bold">Colecciones de plantillas</h2>
+        <div className="flex flex-row gap-2">
+          <div className="bg-primary h-6 w-2 rounded-md" />
+          <p className="text-md text-accent-content">
+            Esta funcionalidad está parcialmente en desarrollo. Podrías
+            encontrar errores.
+          </p>
+        </div>
         <p className="mt-1 text-sm opacity-60">
           Añade las URLs de los repositorios de plantillas que quieras cargar.
           Pon una URL por línea.
