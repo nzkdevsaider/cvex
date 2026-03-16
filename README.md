@@ -1,5 +1,7 @@
 # CVeX - Creador de curriculums basado en Latex
 
+![CVeX Logo](/public/logo.png)
+
 ## Introducción
 
 CVeX es un creador y organizador de curriculums vitae que utiliza Latex como renderizador de documentos y JSONResume como estructura del currículum. Este es un proyecto educativo que busca encontrar una manera más organizada y sencilla para que las personas puedan crear y estructurar bien una hoja de vida que sea amigable para los sistemas ATS modernos.
