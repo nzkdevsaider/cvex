@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import packageJson from "../../package.json";
 
 export function Navbar() {
   return (
@@ -17,6 +18,9 @@ export function Navbar() {
             height={42}
             className="rounded-sm"
           />
+          <span className="text-xs badge badge-sm badge-accent">
+            {packageJson.version}
+          </span>
         </Link>
       </div>
 

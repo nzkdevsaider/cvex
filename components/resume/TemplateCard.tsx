@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
+import { ArrowRight } from "lucide-react";
 
 interface TemplateCardProps {
   id: string;
@@ -9,6 +10,7 @@ interface TemplateCardProps {
   preview: string;
   onClick: (templateId: string) => void;
   loading?: boolean;
+  disabled?: boolean;
 }
 
 export function TemplateCard({
@@ -18,12 +20,13 @@ export function TemplateCard({
   preview,
   onClick,
   loading = false,
+  disabled = false,
 }: TemplateCardProps) {
   return (
     <Card
       hover
-      onClick={() => !loading && onClick(id)}
-      className={`group flex flex-col gap-4 select-none ${loading ? "opacity-50 pointer-events-none" : ""}`}
+      onClick={() => !loading && !disabled && onClick(id)}
+      className={`group flex flex-col gap-4 select-none ${loading ? "opacity-50 pointer-events-none" : ""} ${disabled ? "opacity-50 pointer-events-none" : ""}`}
     >
       {/* TODO: Thumbnail generator */}
       <div className="flex h-40 items-center justify-center rounded-lg border border-base-300 bg-base-300 text-5xl overflow-hidden">
@@ -39,7 +42,9 @@ export function TemplateCard({
 
       <span className="mt-auto text-xs font-medium opacity-60 flex items-center gap-1">
         Usar plantilla
-        <span className="transition-transform duration-200 group-hover:translate-x-1 inline-block">→</span>
+        <span className="transition-transform duration-200 group-hover:translate-x-1 inline-block">
+          {disabled ? "(No disponible)" : <ArrowRight className="w-4 h-4" />}
+        </span>
       </span>
     </Card>
   );

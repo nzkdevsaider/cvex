@@ -66,6 +66,7 @@ export default function NewPage() {
                       id={t.id}
                       name={t.name}
                       description={t.description}
+                      disabled={t.disabled}
                       preview={t.preview}
                       onClick={handleSelect}
                       loading={loadingId === t.id}
@@ -133,7 +134,8 @@ export default function NewPage() {
       })}
 
       <p className="mt-12 text-center text-xs opacity-40">
-        ¿Quieres más plantillas?{" "}
+        <span className="badge badge-xs badge-info">beta</span> ¿Quieres más
+        plantillas?{" "}
         <Link href="/settings/add-templates-collections" className="link">
           Añade colecciones externas
         </Link>

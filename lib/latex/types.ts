@@ -66,6 +66,6 @@ export interface LatexTemplate {
   name: string;
   description: string;
   preview: string;
-  /** Handlebars template source string (equivalent to ExternalTemplate.templateSource) */
   templateSource: string;
+  disabled?: boolean;
 }

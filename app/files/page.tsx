@@ -7,6 +7,7 @@ import { useTemplateCollections } from "@/hooks/useTemplateCollections";
 import { ResumeCard } from "@/components/resume/ResumeCard";
 import { CollectionUpdateDrawer } from "@/components/templates/CollectionUpdateDrawer";
 import { Button } from "@/components/ui/Button";
+import { Github } from "lucide-react";
 
 export default function FilesPage() {
   const { resumes, deleteResume } = useResumeList();
@@ -31,6 +32,25 @@ export default function FilesPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <div className="card w-full bg-base-400 shadow-md border border-base-300 card-md mb-5">
+        <div className="card-body">
+          <h2 className="card-title">Versión de desarrollo temprano (beta)</h2>
+          <p>
+            Gracias por probar CVeX, actualmente se encuentra en desarrollo
+            constante así que podrías encontrar algunos errores. Eres bienvenido
+            de reportarlos en el repositorio de GitHub.
+          </p>
+          <div className="justify-end card-actions">
+            <Link href="https://github.com/nzkdevsaider/cvex/issues">
+              <Button className="btn-outline" size={"sm"}>
+                <Github className="w-4 h-4" />
+                Reportar un error
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-8 flex items-center justify-between animate-fade-up">
         <div>
